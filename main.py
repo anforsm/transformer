@@ -1,5 +1,6 @@
 import torch 
 import torch.nn as nn 
+import torch.optim as optim
 
 
 class SelfAttention(nn.Module):
@@ -212,7 +213,47 @@ class Transformer(nn.Module):
         out = self.decoder(trg, enc_src, src_mask, trg_mask)
         return out
 
+def train_one_epoch(epoch_index, tb_writer):
+    loss_fn = torch.nn.CrossEntropyLoss()
+    optimizer = torch.optim.SGD(model.parameters(), lr=0.001, momentum=0.9)
+    training_loader = torch.utils.data.DataLoader(training_set, batch_size=4, shuffle=True)
+    running_loss = 0.
+    last_loss = 0.
+
+    # Here, we use enumerate(training_loader) instead of
+    # iter(training_loader) so that we can track the batch
+    # index and do some intra-epoch reporting
+    for i, data in enumerate(training_loader):
+        # Every data instance is an input + label pair
+        inputs, labels = data
+
+        # Zero your gradients for every batch!
+        optimizer.zero_grad()
+
+        # Make predictions for this batch
+        outputs = model(inputs)
+
+        # Compute the loss and its gradients
+        loss = loss_fn(outputs, labels)
+        loss.backward()
+
+        # Adjust learning weights
+        optimizer.step()
+
+        # Gather data and report
+        running_loss += loss.item()
+        if i % 1000 == 999:
+            last_loss = running_loss / 1000 # loss per batch
+            print('  batch {} loss: {}'.format(i + 1, last_loss))
+            tb_x = epoch_index * len(training_loader) + i + 1
+            tb_writer.add_scalar('Loss/train', last_loss, tb_x)
+            running_loss = 0.
+
+    return last_loss
+
 if __name__ == "__main__":
+    # Get training data 
+    training_set = 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     x = torch.tensor([[1, 5, 6, 4, 3, 9, 5, 2, 0], [1, 8, 7, 3, 4, 5, 6, 7, 2]]).to(
